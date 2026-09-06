@@ -1,0 +1,10 @@
+[Unit]
+Description=flashlight daemon (replaced: rear_flash shim, see halium-rear-flash-shim.py)
+BindsTo=gnome-session.target
+After=gnome-session.target
+Conflicts=gnome-session@gnome-login.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/libexec/halium-rear-flash-shim.py
+Restart=on-failure

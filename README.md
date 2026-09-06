@@ -15,15 +15,30 @@ below, which reuses a fix originally found on the Ubuntu Touch/Halium side
 of this device's work).
 
 **Current status: real Adreno GPU-accelerated rendering (via hwcomposer),
-working touch input, survives a cold reboot, working SSH. Audio has gone
-through a full stack rebuild (PipeWire → PulseAudio+armhf bridge) and is
-believed complete but not yet flash-tested. Container auto-start was
-abandoned after three failed automated approaches — it is now
-intentionally manual-only. Telephony (modem/RIL) is actively broken.
-Suspend-to-RAM does not actually suspend (screen blanks, CPU stays awake) —
-diagnosed but not fixed. This is an honest, warts-and-all snapshot of a
-long-running, iterative debugging project (25 versioned iterations so
-far), not a finished ROM.**
+working touch input, survives a cold reboot, working SSH, and (as of v37)
+a source-level root-cause fix to a `libhybris` EGL bug that was silently
+zeroing out every usable GPU display configuration on the Wayland
+platform (see [v36/v37](#v36v37-the-real-egl-root-cause-fix-not-a-workaround)
+below — this is the project's deepest fix so far: found by reading the
+vendored `libhybris` fork's own source, not by trial and error). Screen
+lock now genuinely requires and accepts a PIN again after being
+accidentally short-circuited for months (v37/v38). Audio has gone through
+a full stack rebuild (PipeWire → PulseAudio+armhf bridge) and is believed
+complete but not yet flash-tested. Container auto-start was abandoned
+after three failed automated approaches — it is now intentionally
+manual-only. The camera viewfinder is still black — the EGL fix was
+necessary but not sufficient; the actual working rendering path
+(CPU-side NV21 callback frames, bypassing GL textures) exists only
+compiled into an older binary and its source was lost in an earlier
+fork/rebase (see [v38 (cont'd)](#v38-contd-camera-architecture-work-and-the-lost-nv21-callback-source)).
+Telephony (modem/RIL) is actively broken. The Phosh↔SurfaceFlinger
+compositor hand-off is a real, still-unsolved hardware-composer-client
+race under active investigation (see
+[v38](#v38-phocsurfaceflinger-composer-client-race)). Suspend-to-RAM does
+not actually suspend (screen blanks, CPU stays awake) — diagnosed but not
+fixed. This is an honest, warts-and-all snapshot of a long-running,
+iterative debugging project (38 versioned iterations so far), not a
+finished ROM.**
 
 ## What this actually is
 
@@ -39,40 +54,60 @@ plugin for telephony) instead of a custom-built Halium image.
 
 ## Repository layout
 
-- **`v25-latest/`** — snapshot of the most recent versioned working
-  folder (`v25`, chronologically newest of the `v1`..`v25` iteration
-  history kept locally), synced with everything **except files over
-  100MB** (rootfs/userdata image chunks, the vendor kernel-modules
-  tarball — none of that is project-authored content anyway; see
-  `v25-latest/firmware/` for the two exceptions below).
-  - `v25-latest/firmware/boot.img`, `vendor_boot.img` — real file
+- **`v38-latest/`** — snapshot of the most recent versioned working
+  folder (`v38`, chronologically newest of the `v1`..`v38` iteration
+  history kept locally), synced with everything **except proprietary
+  Samsung/Qualcomm vendor blobs** (see `PROPRIETARY-FILES.txt`) **and
+  files over 100MB** that aren't project-authored (rootfs/userdata
+  image chunks, the vendor kernel-modules tarball).
+  - `v38-latest/firmware/boot.img`, `vendor_boot.img` — real file
     content (not the symlinks the working folder normally uses, which
     point outside the tracked tree to shared build outputs) for the
-    exact boot/vendor_boot pair this version was tested against.
-    `system.img` (1.3GB, an extracted/patched Android system
-    partition, not project-authored) is intentionally **not**
-    included.
-  - `v25-latest/mount-patched-v3.sh` — the actual boot-time mount/init
+    exact boot/vendor_boot pair this version is flashed and tested
+    with.
+  - `v38-latest/firmware/system.img`, `v38-latest/data/rootfs-chunks`,
+    `v38-latest/data/userdata-overlay.tar.gz` — **symlinks**, not
+    included in git (each would be gigabytes and none is
+    project-authored content). They point at
+    `../../local-large-files/...`, i.e. a sibling folder next to
+    `v38-latest/` at the repo root that isn't tracked by git. To build
+    a real flashable ZIP: create `local-large-files/` next to
+    `v38-latest/`, drop your own `system.img` (extracted Android
+    system partition), `rootfs-chunks/` (the `rootfs.img.part-N` files
+    produced by `split -b`, see [Flashing](#flashing)) and
+    `userdata-overlay.tar.gz` in it, and the packaging step below
+    picks them up through the symlinks automatically — no editing of
+    anything under `v38-latest/` required.
+  - `v38-latest/mount-patched-v3.sh` — the actual boot-time mount/init
     script flashed to the device for this version.
-  - `v25-latest/halium-extras/` — the bridge scripts, systemd units,
+  - `v38-latest/halium-extras/` — the bridge scripts, systemd units,
     and package overlay (`rootfs-files/`) applied on top of the base
     Droidian rootfs.
-  - `v25-latest/META-INF/` — the TWRP-flashable ZIP installer scripts.
-  - `v25-latest/FIXES-*.md` — this version's own changelog/
-    investigation notes (kernel `.config` change, the missing arm64
-    audio package fix, container auto-start being abandoned).
+  - `v38-latest/META-INF/` — the TWRP-flashable ZIP installer scripts.
+  - `v38-latest/FIXES-*.md`, `ФИКСЫ_ДЛЯ_В36.txt` — this version's own
+    changelog/investigation notes.
+- **`kernel-config/lineage-m52xq_defconfig`** — the kernel `.config`
+  currently in use, kept at the repo root since it applies across
+  versions (see [Recurring themes](#recurring-themes) item 7 and the
+  v10/v25 kernel-config history entries for why specific options in it
+  matter).
+- **`PROPRIETARY-FILES.txt`** — flat list of the Samsung/Qualcomm/
+  ArcSoft vendor blob paths deliberately excluded from this repo, with
+  instructions for extracting them from your own device's stock
+  firmware (same convention LineageOS/Halium device trees use for
+  their own `proprietary-files.txt`).
 
-## Full project history (v1 → v25)
+## Full project history (v1 → v38)
 
 Each numbered version represents one real flash-and-test iteration on
 physical hardware. This section is the project's lab notebook,
-condensed from the original per-version `.md` files (`DROIDIAN-vN-
-PLAN.md`, `DROIDIAN-vN-SYSTEMD-FIX-HOWTO.md`, `FIXES-vN-*.md` — only
-`v25`'s own copies are kept in full under `v25-latest/`, the rest
-exist only in this history section). Kept in full technical detail
-deliberately — exact paths, service names, error strings — since this
-is meant to be reference material for whoever debugs the next
-regression, not a marketing changelog.
+condensed from the original per-version `.md`/`.txt` files (`DROIDIAN-
+vN-PLAN.md`, `DROIDIAN-vN-SYSTEMD-FIX-HOWTO.md`, `FIXES-vN-*.md`,
+`ФИКСЫ_ДЛЯ_В36.txt` — only `v38`'s own copies are kept in full under
+`v38-latest/`, the rest exist only in this history section). Kept in
+full technical detail deliberately — exact paths, service names, error
+strings — since this is meant to be reference material for whoever
+debugs the next regression, not a marketing changelog.
 
 ### v1 → v2: the foundational bootloop (systemd + kernel `close_range()`)
 
@@ -540,12 +575,164 @@ regression, not a marketing changelog.
   of this class of kernel-hardening-vs-vendor-driver-compat tradeoff;
   applied independently here).
 
+### v36/v37: the real EGL root-cause fix (not a workaround)
+
+The camera viewfinder had been black since the project began, always
+attributed to "some HAL/GL plumbing issue" without a specific cause.
+This version finally root-caused it at the source level.
+
+- **Diagnostic tool built first**: a standalone C program
+  (`egl_dump.c`) that opens a Wayland connection, calls
+  `eglGetPlatformDisplayEXT(EGL_PLATFORM_WAYLAND_KHR, ...)` and walks
+  every `EGLConfig` the vendor driver returns via
+  `eglGetConfigAttrib()`, counting how many have a non-zero, sane
+  `EGL_BUFFER_SIZE`/`EGL_RENDERABLE_TYPE`. Baseline result on-device:
+  **0 out of ~200 raw configs were usable** — the vendor Adreno driver
+  itself was returning all-zero attribute values for every config,
+  which explains a black surface with no error path (`eglSwapBuffers`
+  still "succeeds").
+- **Found the actual bug by reading source, not by guessing**: this
+  device's deployed `libhybris` is a specific fork/branch
+  (`droidian/libhybris`, `feature/next/lindroid-drm`, commit
+  `60b7e82`) with a GLVND-based architecture — a single opaque
+  `dpy` handle from the app's point of view is really a
+  `struct _EGLDisplay { EGLDisplay dpy; EGLNativeDisplayType
+  display_id; }` wrapper internal to libhybris, and every EGL entry
+  point is required to unwrap it via `hybris_egl_get_real_display(dpy)`
+  before passing it down to the real vendor driver.
+  `hybris/egl/egl.c`'s `eglGetConfigAttrib()` was **hand-written**
+  instead of going through the same code-generation macro
+  (`HYBRIS_EGL_IMPLEMENT_FUNCTION4`) every sibling function uses, and
+  it skipped that one unwrap call — so the vendor driver was being
+  handed a raw libhybris-internal struct pointer instead of its own
+  real display handle, and (reasonably) returned garbage.
+- **Why this couldn't be patched with `LD_PRELOAD`**: the system
+  `libEGL.so.1` is a **GLVND dispatcher**, not a normal shared library
+  — confirmed via `LD_DEBUG=libs` and by `nm -D` showing the real
+  vendor `libEGL_libhybris.so.0.0.0` exports *only* one symbol,
+  `__egl_Main(...)`, called once at load time to register a whole
+  vendor function-pointer table (`hybris/egl/glvnd/eglglvnd.cpp`).
+  There is no PLT-resolved `eglGetConfigAttrib` symbol for an
+  `LD_PRELOAD` shim to intercept — every call goes through that
+  pre-registered table. (An earlier attempt to define
+  `eglGetPlatformDisplayEXT` in an `LD_PRELOAD` library actually made
+  things worse — it created a symbol binding that hadn't existed
+  before, and something then called through a NULL
+  `dlsym(RTLD_NEXT, ...)` result and aborted.) This ruled out every
+  non-invasive workaround; a real source patch and rebuild was the
+  only option.
+- **The fix** — one line, in `eglGetConfigAttrib()`:
+  ```c
+  ret = (*_eglGetConfigAttrib)(hybris_egl_get_real_display(dpy), config, attribute, value);
+  ```
+- **Cross-compiling it back** required reassembling the exact build
+  (fetched the fork's sources directly from GitHub at the deployed
+  commit — the AOSP tree checked out under `vendor/halium/libhybris`
+  locally turned out to be an unrelated, untracked, stale copy),
+  a hand-written `config.h`/`android-config.h` matching the real
+  `configure.ac` flags (`WANT_WAYLAND`, `WANT_LINDROID_DRM_GLOBAL`,
+  `WANT_GLVND`, `GL_LIB_SUFFIX="_libhybris"`), and the GLVND dispatch
+  stub generator (`glvnd/generate/gen_egl_dispatch.py`) to regenerate
+  `g_egldispatchstubs.c`. Final linked `.so` matched the original's
+  `NEEDED` list (one harmless extra `libdl.so.2` entry from a glibc
+  version skew between the cross-sysroot and the device) and exported
+  only `__egl_Main`, same as the original.
+- **Confirmed fixed** with the same diagnostic tool: **105 out of 105
+  good configs** after deploying the patched library (previously 0).
+  This is a real, verified, source-level fix — not a config tweak or a
+  workaround.
+
+### v38: Phoc/SurfaceFlinger composer-client race
+
+The EGL fix did not by itself make GPU rendering visible end-to-end —
+`phoc` (the Wayland compositor Phosh runs on) intermittently fails to
+start with a hard crash instead of a normal graceful retry:
+```
+write(2, "failed to create composer client", 32)
+tgkill(pid, pid, SIGABRT)
+```
+caught via `strace -f` on a manually-launched `phosh-session` (run
+with the exact environment its systemd unit sets, to reproduce the
+real startup conditions). Root cause: Android's HWC (`hwcomposer`)
+model only ever expects **one** exclusive composer client — normally
+`SurfaceFlinger`, which Android's own `init` auto-restarts as a
+persistent service inside the LXC container — so `phoc` and
+`SurfaceFlinger` are structurally racing for the same single client
+slot every time either one (re)starts, even with no other
+interference. A partially-reliable manual recovery sequence was
+worked out (`systemctl stop phosh.service` → restart
+`lxc-android-config.service` → bounce the composer service → `kill -9`
+every `surfaceflinger` PID inside the container via `lxc-attach` →
+restart `phosh.service`), but this is a mitigation, not a fix — a
+real fix would mean either making `SurfaceFlinger` not run at all
+inside the container (it currently has no other job there) or
+building genuine multi-client arbitration, neither attempted yet.
+
+### v38 (cont'd): camera architecture work and the lost NV21-callback source
+
+With the EGL fix confirmed, camera work continued but the viewfinder
+stayed black — the actual bug turned out to be one layer up, in the
+Qt Multimedia camera plugin (`libaalcamera.so`), and only partially
+about EGL.
+
+- **Rebuilt the camera plugin from current source, cross-compiled
+  against a full Qt5 (including QtMultimedia/QtSensors, missing from
+  this rootfs's own trimmed Qt install) via a custom `qt.conf`
+  pointing `qmake` at a separate sysroot.** Two build-system bugs hit
+  and fixed along the way: `pkg-config` silently dropping the
+  cross-sysroot's own `-I` include path because it looked like "the
+  default" (fixed with `PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1`, otherwise
+  the compiler silently fell back to a stale, incompatible system
+  header); and Qt's Meta-Object Compiler (`moc`) picking up the
+  *host* g++'s default include paths instead of the cross-compiler's,
+  causing `Parse error at "std"` in a totally unrelated STL header —
+  fixed by invoking `moc` directly with an explicit, minimal include
+  list for all 16 affected headers.
+- **The rebuild compiled clean and installed, but did not fix the
+  viewfinder** — comparing behavior against an old, still-working
+  compiled copy of the same plugin (by hash: known-good
+  `a1f73a46...` vs. today's fresh `76f1cc8a...`) showed the actual
+  working rendering path never went through the GL/EGL texture route
+  (`android_camera_set_preview_texture()`) at all. It uses a
+  **CPU-side NV21 preview-callback path** instead
+  (`AalCallbackFrameMapper`, `handleType() == NoHandle`) that copies
+  each raw HAL preview frame directly into an RGB32 buffer. That
+  code path exists **only inside the old compiled binary** — the
+  corresponding source was lost somewhere in this project's own
+  `v34→v35→v36` fork/rebase history and is not present in the
+  `camera-src/` this repository ships. Recovering it (by
+  disassembling the known-good binary, or by rewriting the
+  callback-mode renderer from scratch against the current Qt
+  Multimedia camera-control API) is the next concrete step, not yet
+  done.
+- Also found, independently: `QCameraImageCapture::supportedResolutions`
+  (a QtMultimedia property) reads back empty even when the underlying
+  C++ control's own method returns a valid fallback list, which blocks
+  `Camera.start()` in the QML UI before `connectCamera()`'s own debug
+  logging ever fires — a separate, deeper QtMultimedia-level gate, not
+  fixed by either the EGL patch or the correct plugin.
+- Migrated `halium-fix-libcameraservice.service` from a boot-time,
+  phosh-startup-gated fix (60-iteration wait loop) to an **on-demand**
+  one, triggered only when the camera app is actually opened
+  (`halium-camera-ondemand-refresh.sh`) — removes an unnecessary fixed
+  cost from every single boot for a fix that's only ever needed when
+  the camera runs.
+- **Screen-lock/PIN fix**: found and removed a leftover
+  `require-unlock=False` override (originally added back when touch
+  input during PIN entry was unreliable) that was silently
+  re-disabling the lock screen's password requirement on every fresh
+  flash, *after* the real underlying touch/`/etc/shadow` group bug it
+  was working around had already been separately fixed — the two
+  fixes had been quietly fighting each other for months. Confirmed
+  live: lock screen requires and accepts a PIN normally on a clean
+  flash with the override removed.
+
 ### Known unresolved: telephony (RIL/modem)
 
 Dial pad stays greyed out — `org.ofono.Manager.GetModems` returns zero
 modems, unchanged since v11. Two real, confirmed bugs already found
 and fixed live on the device (only partially folded back into
-sources — see `v25-latest/DROIDIAN-V25-PLAN.md` for the precise,
+sources — see `v38-latest/DROIDIAN-V25-PLAN.md` for the precise,
 version-accurate state):
 
 1. `ofonod-wrapper`'s plugin auto-selection shells out to a
@@ -666,25 +853,35 @@ worth running whenever the device feels hot with no obvious cause.
 ## Flashing
 
 The installer is a standard TWRP-flashable ZIP built from the contents
-of a versioned folder (this repository mirrors the `v25` staging
-state, the latest at time of writing) via:
+of a versioned folder (this repository mirrors the `v38` staging
+state, the latest at time of writing). First obtain the proprietary
+vendor blobs listed in `PROPRIETARY-FILES.txt` from your own device
+and place them at the same relative paths, then drop `system.img`,
+`rootfs-chunks/` and `userdata-overlay.tar.gz` into a `local-large-
+files/` folder next to `v38-latest/` (see [Repository
+layout](#repository-layout) above — the tracked symlinks under
+`v38-latest/firmware/` and `v38-latest/data/` pick these up
+automatically), then:
 
 ```sh
-cd v25 && zip -9 -r ../output.zip . -x ".*"
+cd v38-latest && zip -9 -r ../output.zip . -x ".*"
 ```
 
 (must be run from *inside* the version folder — running it from
 outside with the folder name as an argument embeds a path prefix that
 breaks TWRP's `update-binary` lookup; also must **not** use `-y`
-per the v25 history entry above, since symlinks in the working folder
-need to be dereferenced into real content at archive-build time, not
-preserved as symlinks pointing outside the archive).
+per the v25 history entry above, since the symlinks above need to be
+dereferenced into real content at archive-build time, not preserved as
+symlinks pointing outside the archive).
 
-The actual bridge library set, extracted Android framework files, and
-the built `rootfs.img`/`system.img` are not included in full here
-(only the `boot.img`/`vendor_boot.img` pair, under the 100MB limit
-this repository was kept under) — this repository is the patch/fix
-source material and full project history, not a turnkey installer.
+The `rootfs-chunks/` files are expected to be named
+`rootfs.img.part-0`, `rootfs.img.part-1`, ... (produced by `split -b
+<size> rootfs.img rootfs.img.part-` — see the v3/v4 history entry
+above for why chunking is needed at all: TWRP's own `unzip` has a hard
+4GiB boundary bug). None of this vendor-derived binary material is
+included in the repository itself — this repository is the
+patch/fix source material and full project history, not a turnkey
+installer.
 
 ## License
 
@@ -693,5 +890,6 @@ repository (personal project). Individual injected files retain
 whatever license their upstream project uses (systemd unit
 conventions, standard Debian package file formats, Droidian's own
 package builds, etc). Not for redistribution of the excluded
-vendor-derived binary material (`system.img`, kernel modules tarball,
-rootfs/userdata image chunks).
+vendor-derived binary material listed in `PROPRIETARY-FILES.txt`
+(`system.img`, kernel modules tarball, rootfs/userdata image chunks,
+Samsung/Qualcomm/ArcSoft `.so`/firmware blobs).

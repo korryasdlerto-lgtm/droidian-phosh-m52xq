@@ -1,0 +1,12 @@
+[Unit]
+Description=Kick vendor.camera-provider-2-6 immediately on a kernel-reported ANOM_ABEND crash
+After=lxc-android-config.service
+
+[Service]
+Type=simple
+ExecStart=/usr/libexec/halium-camera-provider-abend-watchdog.sh
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,7 @@
+[Unit]
+Description=Restart phosh.service if dead processes are still holding handle-power-key inhibitors
+After=lxc-android-config.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/halium-powerkey-inhibitor-watchdog.sh

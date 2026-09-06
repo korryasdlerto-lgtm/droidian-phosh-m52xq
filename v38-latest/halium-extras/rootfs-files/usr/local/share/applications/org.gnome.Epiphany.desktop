@@ -1,0 +1,23 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Web
+GenericName=Web Browser
+Comment=Browse the web
+Exec=/usr/libexec/halium-hybris-gpu-env-wrapper.sh /usr/bin/epiphany %U
+Terminal=false
+MimeType=text/html;application/xhtml+xml;x-scheme-handler/http;x-scheme-handler/https;multipart/related;application/x-mimearchive;message/rfc822;application/x-xpinstall;
+Icon=org.gnome.Epiphany
+Categories=GNOME;GTK;Network;WebBrowser;
+StartupNotify=true
+X-GNOME-UsesNotifications=true
+
+Actions=new-window;new-incognito;
+
+[Desktop Action new-window]
+Name=New Window
+Exec=/usr/libexec/halium-hybris-gpu-env-wrapper.sh /usr/bin/epiphany --new-window %U
+
+[Desktop Action new-incognito]
+Name=New Incognito Window
+Exec=/usr/libexec/halium-hybris-gpu-env-wrapper.sh /usr/bin/epiphany --incognito-mode %U

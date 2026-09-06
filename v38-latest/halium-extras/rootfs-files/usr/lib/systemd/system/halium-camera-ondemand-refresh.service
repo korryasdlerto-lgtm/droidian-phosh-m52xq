@@ -1,0 +1,8 @@
+[Unit]
+Description=One-shot: fresh minimediaservice pairing + camera provider restart, triggered by opening the Camera app
+After=lxc-android-config.service
+Requisite=lxc-android-config.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/halium-camera-ondemand-refresh.sh

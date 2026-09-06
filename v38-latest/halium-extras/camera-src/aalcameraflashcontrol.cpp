@@ -1,0 +1,140 @@
+/*
+ * Copyright (C) 2013 Canonical, Ltd.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; version 3.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include "aalcameraflashcontrol.h"
+#include "aalcameracontrol.h"
+#include "aalcameraservice.h"
+#include "hal_call_timeout.h"
+
+#include <QDebug>
+#include <cstdio>
+
+#include <hybris/camera/camera_compatibility_layer.h>
+#include <hybris/camera/camera_compatibility_layer_capabilities.h>
+
+AalCameraFlashControl::AalCameraFlashControl(AalCameraService *service, QObject *parent)
+    : QCameraFlashControl(parent),
+      m_service(service),
+      m_currentMode(QCameraExposure::FlashManual)
+{
+}
+
+QCameraExposure::FlashModes AalCameraFlashControl::flashMode() const
+{
+    return m_currentMode;
+}
+
+bool AalCameraFlashControl::isFlashModeSupported(QCameraExposure::FlashModes mode) const
+{
+    return m_supportedModes.isEmpty() || m_supportedModes.contains(mode);
+}
+
+bool AalCameraFlashControl::isFlashReady() const
+{
+    return true;
+}
+
+void AalCameraFlashControl::setFlashMode(QCameraExposure::FlashModes mode)
+{
+    if (mode == m_currentMode || !isFlashModeSupported(mode))
+        return;
+
+    FlashMode fmode = qt2Android(mode);
+    m_currentMode = mode;
+
+    if (m_service->androidControl()) {
+        android_camera_set_flash_mode(m_service->androidControl(), fmode);
+    }
+}
+
+void AalCameraFlashControl::init(CameraControl *control)
+{
+    // 2026-08-30: called on every enablePhotoMode()/enableVideoMode() (i.e.
+    // every capture-mode switch) -- confirmed live a ~6.5s silent gap right
+    // before a photo->video mode switch, immediately preceding a HAL crash,
+    // with nothing logged anywhere in that window. Both calls below are
+    // synchronous binder calls into cameraserver with no prior timeout
+    // guard and no logging, making them the leading suspect. Wrapped with
+    // the same runHalCallWithTimeout() pattern used elsewhere tonight.
+    fprintf(stderr, "CLAUDE_DEBUG: AalCameraFlashControl::init() calling querySupportedFlashModes()\n");
+    {
+        CameraControl *c = control;
+        AalCameraFlashControl *self = this;
+        runHalCallWithTimeout([self, c]() { self->querySupportedFlashModes(c); },
+                              3000, "android_camera_enumerate_supported_flash_modes()");
+    }
+    fprintf(stderr, "CLAUDE_DEBUG: AalCameraFlashControl::init() querySupportedFlashModes() done\n");
+
+    FlashMode mode = qt2Android(m_currentMode);
+    fprintf(stderr, "CLAUDE_DEBUG: AalCameraFlashControl::init() calling android_camera_set_flash_mode()\n");
+    runHalCallWithTimeout([control, mode]() { android_camera_set_flash_mode(control, mode); },
+                          3000, "android_camera_set_flash_mode()");
+    fprintf(stderr, "CLAUDE_DEBUG: AalCameraFlashControl::init() android_camera_set_flash_mode() done\n");
+
+    Q_EMIT flashReady(true);
+}
+
+FlashMode AalCameraFlashControl::qt2Android(QCameraExposure::FlashModes mode)
+{
+    switch(mode) {
+    case QCameraExposure::FlashOff:
+        return FLASH_MODE_OFF;
+    case QCameraExposure::FlashOn:
+        return FLASH_MODE_ON;
+    case QCameraExposure::FlashRedEyeReduction:
+        return FLASH_MODE_RED_EYE;
+    case QCameraExposure::FlashVideoLight:
+    case QCameraExposure::FlashTorch:
+        return FLASH_MODE_TORCH;
+    case QCameraExposure::FlashAuto:
+    default:
+        return FLASH_MODE_AUTO;
+    }
+}
+
+QCameraExposure::FlashModes AalCameraFlashControl::android2Qt(FlashMode mode)
+{
+    switch(mode) {
+    case FLASH_MODE_ON:
+        return QCameraExposure::FlashOn;
+    case FLASH_MODE_TORCH:
+        return QCameraExposure::FlashVideoLight;
+    case FLASH_MODE_RED_EYE:
+        return QCameraExposure::FlashRedEyeReduction;
+    case FLASH_MODE_AUTO:
+        return QCameraExposure::FlashAuto;
+    case FLASH_MODE_OFF:
+    default:
+        return QCameraExposure::FlashOff;
+    }
+}
+
+/*!
+ * \brief AalCameraFlashControl::querySupportedFlashModes gets the supported
+ * flash modes for the current camera
+ */
+void AalCameraFlashControl::querySupportedFlashModes(CameraControl *control)
+{
+    m_supportedModes.clear();
+
+    android_camera_enumerate_supported_flash_modes(control, &AalCameraFlashControl::supportedFlashModesCallback, this);
+}
+
+void AalCameraFlashControl::supportedFlashModesCallback(void *context, FlashMode flashMode)
+{
+    AalCameraFlashControl *self = (AalCameraFlashControl*)context;
+    self->m_supportedModes << self->android2Qt(flashMode);
+}

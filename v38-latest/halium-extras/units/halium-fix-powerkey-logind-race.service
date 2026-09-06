@@ -1,0 +1,7 @@
+[Unit]
+Description=Re-trigger udev add events for input devices so logind picks up the power key
+After=systemd-logind.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/halium-fix-powerkey-logind-race.sh

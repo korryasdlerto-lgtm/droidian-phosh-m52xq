@@ -1,0 +1,9 @@
+[Unit]
+Description=Periodically check for dead handle-power-key inhibitor holders
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=3min
+
+[Install]
+WantedBy=timers.target

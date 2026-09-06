@@ -1,0 +1,25 @@
+[Unit]
+Description=Directly exec minimediaservice, bypassing broken Android init auto-respawn (в36, live-found 2026-09-05)
+# CLAUDE_DEBUG 2026-09-05: живьём подтверждено -- `service minimedia` в
+# /system/etc/init/servicemanager.rc НЕ имеет oneshot/disabled, то есть
+# по спецификации Android init ДОЛЖЕН сам его перезапускать при падении
+# (обычное поведение class=main без oneshot). На этом патченом init это
+# НЕ работает: pkill -9 minimediaservice -> 10 секунд поллинга -> процесс
+# не появился ни разу. Тот же класс багов, что и ctl.start/ctl.stop для
+# camera-provider (см. halium-camera-provider-direct-start.service) --
+# только там баг был во ВНЕШНЕМ property-триггере, а здесь ломается сам
+# внутренний SIGCHLD-респаун init'а. Раньше (в33/в34, boot-time модель)
+# это маскировалось тем, что minimediaservice убивался лишь ОДИН раз за
+# весь бут, уже будучи живым от собственной ранней инициализации Android-
+# контейнера -- на практике его реальный респаун ни разу не проверялся.
+# On-demand модель (в36) убивает его при КАЖДОМ открытии камеры, и без
+# этого юнита сессия камеры навсегда остаётся в "Camera not ready to
+# capture" -- превью может идти, а фото не снимаются вовсе.
+After=lxc-android-config.service
+Requisite=lxc-android-config.service
+
+[Service]
+Type=simple
+ExecStart=/usr/libexec/halium-minimediaservice-direct-start.sh
+Restart=always
+RestartSec=1

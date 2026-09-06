@@ -1,0 +1,226 @@
+diff --git a/src/screenshot-manager.c b/src/screenshot-manager.c
+index f5b72f00..4cf5f76b 100644
+--- a/src/screenshot-manager.c
++++ b/src/screenshot-manager.c
+@@ -970,6 +970,95 @@ phosh_screenshot_manager_do_screenshot (PhoshScreenshotManager *self,
+ }
+ 
+ 
++/* Any screenshot request - whether it came in over DBus or via the
++ * public phosh_screenshot_manager_take_screenshot() C API used
++ * in-process by the power-menu's own "Screenshot" button and the
++ * global screenshot keybinding/action - can be triggered in the very
++ * same call as something else on screen (that same button's own menu,
++ * most commonly) getting dismissed a moment earlier. Dismissing a GTK
++ * widget (gtk_widget_destroy() et al) is synchronous, but the
++ * corresponding Wayland surface teardown reaching phoc (a separate
++ * process) and phoc actually compositing a frame without it is not -
++ * grabbing immediately can and does still capture the
++ * just-closed menu. Giving the compositor a short, fixed settle
++ * window before the actual zwlr_screencopy grab avoids this
++ * regardless of what was closing or why - deliberately not trying to
++ * track any particular widget/state for this, see the huge amount of
++ * live back-and-forth needed to nail this exact race down. */
++#define SCREENSHOT_SETTLE_MS 1000
++
++typedef struct {
++  PhoshScreenshotManager *self;
++  GDBusMethodInvocation  *invocation;
++  gboolean                is_area;
++  GdkRectangle            area;
++  gboolean                include_cursor;
++  gboolean                flash;
++  char                   *filename_pattern;
++} ScreenshotRequestData;
++
++
++static void
++screenshot_request_data_free (ScreenshotRequestData *data)
++{
++  g_free (data->filename_pattern);
++  g_free (data);
++}
++
++
++static gboolean
++on_screenshot_settle_timeout (gpointer user_data)
++{
++  ScreenshotRequestData *data = user_data;
++  PhoshScreenshotManager *self = data->self;
++  gboolean success;
++
++  success = phosh_screenshot_manager_do_screenshot (
++    self, data->is_area ? &data->area : NULL, data->include_cursor);
++  if (!success) {
++    if (data->is_area)
++      phosh_dbus_screenshot_complete_screenshot_area (PHOSH_DBUS_SCREENSHOT (self), data->invocation, FALSE, "");
++    else
++      phosh_dbus_screenshot_complete_screenshot (PHOSH_DBUS_SCREENSHOT (self), data->invocation, FALSE, "");
++  } else {
++    self->frames->flash = data->flash;
++    self->frames->invocation = data->invocation;
++    self->frames->filename = build_dbus_filename (data->filename_pattern);
++    self->frames->copy_to_clipboard = !self->frames->filename;
++  }
++
++  screenshot_request_data_free (data);
++  return G_SOURCE_REMOVE;
++}
++
++
++/* Was the tail of handle_screenshot / handle_screenshot_area - now
++ * always waits out SCREENSHOT_SETTLE_MS before the actual grab, see
++ * the comment above SCREENSHOT_SETTLE_MS. */
++static void
++execute_screenshot_request (PhoshScreenshotManager *self,
++                            GDBusMethodInvocation  *invocation,
++                            gboolean                is_area,
++                            const GdkRectangle     *area,
++                            gboolean                include_cursor,
++                            gboolean                flash,
++                            const char             *filename_pattern)
++{
++  ScreenshotRequestData *data = g_new0 (ScreenshotRequestData, 1);
++
++  data->self = self;
++  data->invocation = invocation;
++  data->is_area = is_area;
++  if (is_area)
++    data->area = *area;
++  data->include_cursor = include_cursor;
++  data->flash = flash;
++  data->filename_pattern = g_strdup (filename_pattern);
++
++  g_timeout_add (SCREENSHOT_SETTLE_MS, on_screenshot_settle_timeout, data);
++}
++
++
+ static gboolean
+ handle_screenshot_area (PhoshDBusScreenshot   *object,
+                         GDBusMethodInvocation *invocation,
+@@ -982,7 +1071,6 @@ handle_screenshot_area (PhoshDBusScreenshot   *object,
+ {
+   PhoshScreenshotManager *self = PHOSH_SCREENSHOT_MANAGER (object);
+   GdkRectangle area;
+-  gboolean success;
+ 
+   g_debug ("DBus call %s: @%d,%d %dx%d, flash %d, to %s",
+            __func__, arg_x, arg_y, arg_width, arg_height, arg_flash, arg_filename);
+@@ -994,17 +1082,7 @@ handle_screenshot_area (PhoshDBusScreenshot   *object,
+     .height = arg_height,
+   };
+ 
+-  success = phosh_screenshot_manager_do_screenshot (self, &area, FALSE);
+-  if (!success) {
+-    phosh_dbus_screenshot_complete_screenshot_area (object, invocation, FALSE, "");
+-    return TRUE;
+-  }
+-
+-  self->frames->flash = arg_flash;
+-  self->frames->invocation = invocation;
+-  self->frames->filename = build_dbus_filename (arg_filename);
+-  self->frames->copy_to_clipboard = !self->frames->filename;
+-
++  execute_screenshot_request (self, invocation, TRUE, &area, FALSE, arg_flash, arg_filename);
+   return TRUE;
+ }
+ 
+@@ -1017,22 +1095,11 @@ handle_screenshot (PhoshDBusScreenshot   *object,
+                    const char            *arg_filename)
+ {
+   PhoshScreenshotManager *self = PHOSH_SCREENSHOT_MANAGER (object);
+-  gboolean success;
+ 
+   g_debug ("DBus call %s, cursor: %d, flash %d, to %s",
+            __func__, arg_include_cursor, arg_flash, arg_filename);
+ 
+-  success = phosh_screenshot_manager_do_screenshot (self, NULL, arg_include_cursor);
+-  if (!success) {
+-    phosh_dbus_screenshot_complete_screenshot (object, invocation, FALSE, "");
+-    return TRUE;
+-  }
+-
+-  self->frames->flash = arg_flash;
+-  self->frames->invocation = invocation;
+-  self->frames->filename = build_dbus_filename (arg_filename);
+-  self->frames->copy_to_clipboard = !self->frames->filename;
+-
++  execute_screenshot_request (self, invocation, FALSE, NULL, arg_include_cursor, arg_flash, arg_filename);
+   return TRUE;
+ }
+ 
+@@ -1353,6 +1420,35 @@ phosh_screenshot_manager_new (void)
+   return PHOSH_SCREENSHOT_MANAGER (g_object_new (PHOSH_TYPE_SCREENSHOT_MANAGER, NULL));
+ }
+ 
++typedef struct {
++  PhoshScreenshotManager *self;
++  gboolean                has_area;
++  GdkRectangle            area;
++  char                   *filename;
++  gboolean                copy_to_clipboard;
++  gboolean                include_cursor;
++} DirectScreenshotData;
++
++
++static gboolean
++on_take_screenshot_settle_timeout (gpointer user_data)
++{
++  DirectScreenshotData *data = user_data;
++  PhoshScreenshotManager *self = data->self;
++
++  phosh_screenshot_manager_do_screenshot (self, data->has_area ? &data->area : NULL, data->include_cursor);
++  /* frames can be NULL here on failure, same as the original
++   * synchronous code below did not guard against either - do_screenshot
++   * itself already g_debug()s and bails out cleanly in that case. */
++  if (self->frames)
++    self->frames->copy_to_clipboard = data->copy_to_clipboard;
++
++  g_free (data->filename);
++  g_free (data);
++  return G_SOURCE_REMOVE;
++}
++
++
+ /**
+  * phosh_screenshot_manager_take_screenshot:
+  * @self: The screenshot manager
+@@ -1364,7 +1460,15 @@ phosh_screenshot_manager_new (void)
+  * Initiate a screenshot of all outputs or the given area. If `copy_to_clipboard` is
+  * `TRUE` the screenshot is also copied to the clipboard.
+  *
+- * Returns: `FALSE` on failure, otherwise `TRUE`
++ * The actual capture happens after a short settle delay (see
++ * SCREENSHOT_SETTLE_MS above handle_screenshot()) so that in-process
++ * callers who just dismissed their own UI right before calling this
++ * (the power-menu's Screenshot button, the global screenshot
++ * keybinding) don't get that UI baked into the shot.
++ *
++ * Returns: `TRUE` (the capture is now scheduled; failure, if any,
++ * happens asynchronously and is only logged, matching how the
++ * existing in-tree callers already ignore this return value)
+  */
+ gboolean
+ phosh_screenshot_manager_take_screenshot (PhoshScreenshotManager *self,
+@@ -1373,10 +1477,17 @@ phosh_screenshot_manager_take_screenshot (PhoshScreenshotManager *self,
+                                           gboolean                copy_to_clipboard,
+                                           gboolean                include_cursor)
+ {
+-  gboolean ret;
++  DirectScreenshotData *data = g_new0 (DirectScreenshotData, 1);
+ 
+-  ret = phosh_screenshot_manager_do_screenshot (self, area, include_cursor);
+-  self->frames->copy_to_clipboard = copy_to_clipboard;
++  data->self = self;
++  data->has_area = area != NULL;
++  if (area)
++    data->area = *area;
++  data->filename = g_strdup (filename);
++  data->copy_to_clipboard = copy_to_clipboard;
++  data->include_cursor = include_cursor;
++
++  g_timeout_add (SCREENSHOT_SETTLE_MS, on_take_screenshot_settle_timeout, data);
+ 
+-  return ret;
++  return TRUE;
+ }

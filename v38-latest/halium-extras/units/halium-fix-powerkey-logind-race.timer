@@ -1,0 +1,8 @@
+[Unit]
+Description=Fire halium-fix-powerkey-logind-race.service 30s after boot
+
+[Timer]
+OnBootSec=30s
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,8 @@
+[Unit]
+Description=Write patched libcameraservice.so into the running container from inside its own namespace (see ФИКСЫ_ДЛЯ_В36.txt п.15.4)
+Requisite=lxc-android-config.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/halium-fix-libcameraservice.sh
+RemainAfterExit=yes

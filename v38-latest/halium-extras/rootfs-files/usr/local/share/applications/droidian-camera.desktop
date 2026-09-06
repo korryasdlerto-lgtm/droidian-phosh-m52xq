@@ -1,0 +1,32 @@
+#!/usr/bin/env xdg-open
+# Override of /usr/share/applications/droidian-camera.desktop --
+# XDG_DATA_DIRS on this device is /usr/share/gnome:/usr/local/share/:
+# /usr/share/, so /usr/local/share/applications/ wins. Same fix as
+# firefox-esr.desktop/org.gnome.Epiphany.desktop: droidian-camera
+# launched via Phosh's app-grid never inherits HYBRIS_LD_LIBRARY_PATH/
+# ANDROID_ROOT (Phosh forks the process directly, the resulting
+# app-gnome-*.scope is pure cgroup bookkeeping, its own Environment=
+# can't affect an already-exec'd process) -- confirmed live: without
+# this wrapper, droidian-camera busy-loops "Cannot find EGLConfig,
+# returning null config" / "qt.qpa.wayland: Could not create EGL
+# surface (EGL error 0x3005)" hundreds of times per second.
+#
+# CLAUDE_DEBUG 2026-09-05 (в36): Exec= перенаправлен через
+# halium-camera-launch.sh -- при каждом открытии приложения он
+# триггерит on-demand рестарт camera-provider + свежую пару
+# minimediaservice (см. halium-camera-ondemand-refresh.service/.path),
+# а не полагается на boot-time systemd-сервис, как раньше в в33/в34.
+# Сам launch.sh в конце exec'ает halium-camera-gpu-wrapper.sh (тот же
+# GPU/HYBRIS_LD_LIBRARY_PATH-мост, что и раньше), так что этот .desktop
+# всё ещё нужен камере как единственная точка запуска.
+[Desktop Entry]
+Version=1.2
+Type=Application
+Name=Camera
+Exec=/usr/libexec/halium-camera-launch.sh
+TryExec=/usr/bin/droidian-camera
+Icon=camera-app
+Terminal=false
+StartupNotify=false
+Comment=Camera
+Categories=AudioVideo;Video;Photography

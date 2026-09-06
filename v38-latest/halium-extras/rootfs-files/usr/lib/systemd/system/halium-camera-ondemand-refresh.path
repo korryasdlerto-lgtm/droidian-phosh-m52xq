@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch for Camera-app-launch trigger and refresh camera provider on demand
+
+[Path]
+PathChanged=/run/halium-camera-trigger
+Unit=halium-camera-ondemand-refresh.service
+
+[Install]
+WantedBy=multi-user.target
