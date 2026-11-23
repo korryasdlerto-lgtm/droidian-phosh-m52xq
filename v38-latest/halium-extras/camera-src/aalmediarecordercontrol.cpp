@@ -205,11 +205,11 @@ bool AalMediaRecorderControl::initRecorder()
         // here, on the very first camera call of the NEXT initRecorder(),
         // with zero further log output. Same timeout guard.
         {
-            fprintf(stderr, "CLAUDE_DEBUG: initRecorder() calling android_camera_unlock()\n");
+            fprintf(stderr, "M52XQ_DEBUG: initRecorder() calling android_camera_unlock()\n");
             CameraControl *camera = m_service->androidControl();
             runWithTimeout([camera]() { android_camera_unlock(camera); },
                            3000, "android_camera_unlock()");
-            fprintf(stderr, "CLAUDE_DEBUG: initRecorder() android_camera_unlock() done\n");
+            fprintf(stderr, "M52XQ_DEBUG: initRecorder() android_camera_unlock() done\n");
         }
     }
 
@@ -240,14 +240,14 @@ void AalMediaRecorderControl::runWithTimeout(std::function<void()> fn, int timeo
  */
 void AalMediaRecorderControl::deleteRecorder()
 {
-    fprintf(stderr, "CLAUDE_DEBUG: deleteRecorder() calling deleteAudioCapture()\n");
+    fprintf(stderr, "M52XQ_DEBUG: deleteRecorder() calling deleteAudioCapture()\n");
     deleteAudioCapture();
-    fprintf(stderr, "CLAUDE_DEBUG: deleteAudioCapture() returned\n");
+    fprintf(stderr, "M52XQ_DEBUG: deleteAudioCapture() returned\n");
 
     if (m_mediaRecorder == 0)
         return;
 
-    // 2026-08-30: confirmed live via CLAUDE_DEBUG tracing -- this is the
+    // 2026-08-30: confirmed live via M52XQ_DEBUG tracing -- this is the
     // actual hang point when the vendor camera HAL is wedged (all other
     // teardown calls -- stop_recording, recorder_stop, the whole audio
     // capture shutdown -- completed in well under a second; the log went
@@ -266,7 +266,7 @@ void AalMediaRecorderControl::deleteRecorder()
         runWithTimeout([camera]() { android_camera_lock(camera); },
                        3000, "android_camera_lock()");
     }
-    fprintf(stderr, "CLAUDE_DEBUG: deleteRecorder() done\n");
+    fprintf(stderr, "M52XQ_DEBUG: deleteRecorder() done\n");
     setStatus(QMediaRecorder::UnloadedStatus);
 }
 
@@ -298,12 +298,12 @@ void AalMediaRecorderControl::deleteAudioCapture()
     if (m_audioCapture == 0)
         return;
 
-    fprintf(stderr, "CLAUDE_DEBUG: deleteAudioCapture() calling stopCapture()\n");
+    fprintf(stderr, "M52XQ_DEBUG: deleteAudioCapture() calling stopCapture()\n");
     m_audioCapture->stopCapture();
-    fprintf(stderr, "CLAUDE_DEBUG: deleteAudioCapture() calling thread.quit()/wait()\n");
+    fprintf(stderr, "M52XQ_DEBUG: deleteAudioCapture() calling thread.quit()/wait()\n");
     m_audioCaptureThread.quit();
     m_audioCaptureThread.wait();
-    fprintf(stderr, "CLAUDE_DEBUG: deleteAudioCapture() thread.wait() returned\n");
+    fprintf(stderr, "M52XQ_DEBUG: deleteAudioCapture() thread.wait() returned\n");
 
     delete m_audioCapture;
     m_audioCapture = 0;
@@ -429,9 +429,9 @@ int AalMediaRecorderControl::startRecording()
     QVideoEncoderSettings videoSettings = m_service->videoEncoderControl()->videoSettings();
 
     int ret;
-    fprintf(stderr, "CLAUDE_DEBUG: startRecording() calling android_recorder_setCamera()\n");
+    fprintf(stderr, "M52XQ_DEBUG: startRecording() calling android_recorder_setCamera()\n");
     ret = android_recorder_setCamera(m_mediaRecorder, m_service->androidControl());
-    fprintf(stderr, "CLAUDE_DEBUG: android_recorder_setCamera() returned %d\n", ret);
+    fprintf(stderr, "M52XQ_DEBUG: android_recorder_setCamera() returned %d\n", ret);
     if (ret < 0) {
         deleteRecorder();
         Q_EMIT error(RECORDER_INITIALIZATION_ERROR, "android_recorder_setCamera() failed\n");
@@ -439,9 +439,9 @@ int AalMediaRecorderControl::startRecording()
     }
     // state initial / idle
     if (m_audioCaptureAvailable) {
-        fprintf(stderr, "CLAUDE_DEBUG: startRecording() calling android_recorder_setAudioSource()\n");
+        fprintf(stderr, "M52XQ_DEBUG: startRecording() calling android_recorder_setAudioSource()\n");
         ret = android_recorder_setAudioSource(m_mediaRecorder, ANDROID_AUDIO_SOURCE_CAMCORDER);
-        fprintf(stderr, "CLAUDE_DEBUG: android_recorder_setAudioSource() returned %d\n", ret);
+        fprintf(stderr, "M52XQ_DEBUG: android_recorder_setAudioSource() returned %d\n", ret);
         if (ret < 0) {
             deleteRecorder();
             Q_EMIT error(RECORDER_INITIALIZATION_ERROR, "android_recorder_setAudioSource() failed");
@@ -459,18 +459,18 @@ int AalMediaRecorderControl::startRecording()
     // the known-quantity CAMERA source (fails fast after ~3s instead of
     // hanging forever) until that binder-level stall gets its own
     // ftrace-based investigation. See ФИКСЫ_ДЛЯ_В48.txt for the full story.
-    fprintf(stderr, "CLAUDE_DEBUG: startRecording() calling android_recorder_setVideoSource()\n");
+    fprintf(stderr, "M52XQ_DEBUG: startRecording() calling android_recorder_setVideoSource()\n");
     ret = android_recorder_setVideoSource(m_mediaRecorder, ANDROID_VIDEO_SOURCE_GRALLOC_BUFFER);
-    fprintf(stderr, "CLAUDE_DEBUG: android_recorder_setVideoSource() returned %d\n", ret);
+    fprintf(stderr, "M52XQ_DEBUG: android_recorder_setVideoSource() returned %d\n", ret);
     if (ret < 0) {
         deleteRecorder();
         Q_EMIT error(RECORDER_INITIALIZATION_ERROR, "android_recorder_setVideoSource() failed");
         return RECORDER_INITIALIZATION_ERROR;
     }
     // state initialized
-    fprintf(stderr, "CLAUDE_DEBUG: startRecording() calling android_recorder_setOutputFormat()\n");
+    fprintf(stderr, "M52XQ_DEBUG: startRecording() calling android_recorder_setOutputFormat()\n");
     ret = android_recorder_setOutputFormat(m_mediaRecorder, ANDROID_OUTPUT_FORMAT_MPEG_4);
-    fprintf(stderr, "CLAUDE_DEBUG: android_recorder_setOutputFormat() returned %d\n", ret);
+    fprintf(stderr, "M52XQ_DEBUG: android_recorder_setOutputFormat() returned %d\n", ret);
     if (ret < 0) {
         deleteRecorder();
         Q_EMIT error(RECORDER_INITIALIZATION_ERROR, "android_recorder_setOutputFormat() failed");
@@ -478,9 +478,9 @@ int AalMediaRecorderControl::startRecording()
     }
     // state DataSourceConfigured
     if (m_audioCaptureAvailable) {
-        fprintf(stderr, "CLAUDE_DEBUG: startRecording() calling android_recorder_setAudioEncoder()\n");
+        fprintf(stderr, "M52XQ_DEBUG: startRecording() calling android_recorder_setAudioEncoder()\n");
         ret = android_recorder_setAudioEncoder(m_mediaRecorder, ANDROID_AUDIO_ENCODER_AAC);
-        fprintf(stderr, "CLAUDE_DEBUG: android_recorder_setAudioEncoder() returned %d\n", ret);
+        fprintf(stderr, "M52XQ_DEBUG: android_recorder_setAudioEncoder() returned %d\n", ret);
         if (ret < 0) {
             deleteRecorder();
             Q_EMIT error(RECORDER_INITIALIZATION_ERROR, "android_recorder_setAudioEncoder() failed");
@@ -488,9 +488,9 @@ int AalMediaRecorderControl::startRecording()
         }
     }
     // FIXME set codec from settings
-    fprintf(stderr, "CLAUDE_DEBUG: startRecording() calling android_recorder_setVideoEncoder()\n");
+    fprintf(stderr, "M52XQ_DEBUG: startRecording() calling android_recorder_setVideoEncoder()\n");
     ret = android_recorder_setVideoEncoder(m_mediaRecorder, ANDROID_VIDEO_ENCODER_H264);
-    fprintf(stderr, "CLAUDE_DEBUG: android_recorder_setVideoEncoder() returned %d\n", ret);
+    fprintf(stderr, "M52XQ_DEBUG: android_recorder_setVideoEncoder() returned %d\n", ret);
     if (ret < 0) {
         deleteRecorder();
         Q_EMIT error(RECORDER_INITIALIZATION_ERROR, "android_recorder_setVideoEncoder() failed");
@@ -534,11 +534,11 @@ int AalMediaRecorderControl::startRecording()
     // larger size -- guaranteed buffer-size mismatch at every resolution
     // other than whatever the default happened to match. Set both sides
     // together so the camera's stream and the encoder's expectation agree.
-    fprintf(stderr, "CLAUDE_DEBUG: startRecording() calling android_camera_set_video_size()\n");
+    fprintf(stderr, "M52XQ_DEBUG: startRecording() calling android_camera_set_video_size()\n");
     android_camera_set_video_size(m_service->androidControl(), resolution.width(), resolution.height());
-    fprintf(stderr, "CLAUDE_DEBUG: android_camera_set_video_size() done, calling android_recorder_setVideoSize()\n");
+    fprintf(stderr, "M52XQ_DEBUG: android_camera_set_video_size() done, calling android_recorder_setVideoSize()\n");
     ret = android_recorder_setVideoSize(m_mediaRecorder, resolution.width(), resolution.height());
-    fprintf(stderr, "CLAUDE_DEBUG: android_recorder_setVideoSize() returned %d\n", ret);
+    fprintf(stderr, "M52XQ_DEBUG: android_recorder_setVideoSize() returned %d\n", ret);
     if (ret < 0) {
         close(m_outfd);
         m_outfd = -1;
@@ -569,7 +569,7 @@ int AalMediaRecorderControl::startRecording()
         m_service->metadataWriterControl()->clearAllMetaData();
     }
 
-    // 2026-08-30: confirmed live (twice) via CLAUDE_DEBUG tracing -- this is
+    // 2026-08-30: confirmed live (twice) via M52XQ_DEBUG tracing -- this is
     // where a fresh recording attempt hangs once the vendor HAL is already
     // wedged from a previous session (matches the older comment above about
     // prepare() hanging indefinitely on a binder transaction that's never
@@ -583,7 +583,7 @@ int AalMediaRecorderControl::startRecording()
     // a freed stack slot. Times out => treated as failure (ret stays -1,
     // hits the existing deleteRecorder()+error() path below) rather than
     // optimistically continuing into more calls on a HAL we know is dead.
-    fprintf(stderr, "CLAUDE_DEBUG: startRecording() calling android_recorder_prepare()\n");
+    fprintf(stderr, "M52XQ_DEBUG: startRecording() calling android_recorder_prepare()\n");
     {
         auto resultPtr = std::make_shared<int>(-1);
         MediaRecorderWrapper *recorder = m_mediaRecorder;
@@ -591,7 +591,7 @@ int AalMediaRecorderControl::startRecording()
                        3000, "android_recorder_prepare()");
         ret = *resultPtr;
     }
-    fprintf(stderr, "CLAUDE_DEBUG: android_recorder_prepare() returned %d\n", ret);
+    fprintf(stderr, "M52XQ_DEBUG: android_recorder_prepare() returned %d\n", ret);
     if (ret < 0) {
         close(m_outfd);
         m_outfd = -1;
@@ -697,9 +697,9 @@ void AalMediaRecorderControl::stopRecording()
                        3000, "android_camera_stop_recording()");
     }
 
-    fprintf(stderr, "CLAUDE_DEBUG: stopRecording() calling android_recorder_stop()\n");
+    fprintf(stderr, "M52XQ_DEBUG: stopRecording() calling android_recorder_stop()\n");
     int result = android_recorder_stop(m_mediaRecorder);
-    fprintf(stderr, "CLAUDE_DEBUG: android_recorder_stop() returned %d\n", result);
+    fprintf(stderr, "M52XQ_DEBUG: android_recorder_stop() returned %d\n", result);
     if (result < 0) {
         Q_EMIT error(RECORDER_GENERAL_ERROR, "Cannot stop video recording");
         return;

@@ -72,10 +72,10 @@ bool AalImageCaptureControl::isReadyForCapture() const
 int AalImageCaptureControl::capture(const QString &fileName)
 {
     m_lastRequestId++;
-    qWarning() << "CLAUDE_DEBUG: capture() called, m_ready=" << m_ready
+    qWarning() << "M52XQ_DEBUG: capture() called, m_ready=" << m_ready
                << "androidControl=" << (void*)m_service->androidControl();
     if (!m_ready || !m_service->androidControl()) {
-        qWarning() << "CLAUDE_DEBUG: capture() bailing out, not ready";
+        qWarning() << "M52XQ_DEBUG: capture() bailing out, not ready";
         emit error(m_lastRequestId, QCameraImageCapture::NotReadyError,
                    QLatin1String("Camera not ready to capture"));
         return m_lastRequestId;

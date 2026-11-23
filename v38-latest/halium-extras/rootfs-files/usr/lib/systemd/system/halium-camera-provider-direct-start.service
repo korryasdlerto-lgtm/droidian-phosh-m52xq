@@ -1,6 +1,6 @@
 [Unit]
 Description=Directly exec the camera HAL provider, bypassing patched init's broken ctl.start (see FIXES-V32 7.5)
-# CLAUDE_DEBUG 2026-09-05 (в36): НЕ WantedBy=multi-user.target -- этот
+# M52XQ_DEBUG 2026-09-05 (в36): НЕ WantedBy=multi-user.target -- этот
 # юнит больше не стартует сам по себе при загрузке. Он стартуется/
 # рестартуется ИСКЛЮЧИТЕЛЬНО по требованию, из halium-camera-ondemand-
 # refresh.service (systemctl restart), который сам триггерится нажатием

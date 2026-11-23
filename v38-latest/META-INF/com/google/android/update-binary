@@ -504,7 +504,7 @@ if mount -t ext4 -o rw /data/rootfs.img "$ROOTFS_MNT"; then
     # УЖЕ хранит эти файлы в активной директории -- отдельно
     # инжектировать не нужно, просто не мешаем им там оставаться.
     #
-    # CLAUDE_DEBUG 2026-09-05 (в36, перенесено из уже подтверждённого
+    # M52XQ_DEBUG 2026-09-05 (в36, перенесено из уже подтверждённого
     # вывода в34/ФИКСЫ_ДЛЯ_В34.txt): halium-kick-camera-service /
     # halium-camera-provider-abend-watchdog / halium-cameraserver-
     # crashloop-watchdog УБРАНЫ отсюда -- они умеют реагировать на креш
@@ -636,7 +636,7 @@ if mount -t ext4 -o rw /data/rootfs.img "$ROOTFS_MNT"; then
     # behind it, delaying every later target (multi-user.target, sshd,
     # usb-moded) that depends on sysinit.target completing.
     ln -sf "/lib/systemd/system/halium-patch-selinux-checkaccess.service" "$UNITDIR/sysinit.target.wants/halium-patch-selinux-checkaccess.service"
-    # CLAUDE_DEBUG 2026-09-05 (в35 -> в36): просто НЕ добавлять симлинк
+    # M52XQ_DEBUG 2026-09-05 (в35 -> в36): просто НЕ добавлять симлинк
     # здесь оказалось НЕДОСТАТОЧНО -- живьём подтверждено на в35: сервис
     # всё равно был "enabled" и отработал на первом же боте. Причина:
     # симлинк /etc/systemd/system/multi-user.target.wants/halium-disable-
@@ -653,7 +653,7 @@ if mount -t ext4 -o rw /data/rootfs.img "$ROOTFS_MNT"; then
     # в34): /etc/shadow теряет группу shadow где-то в первом буте
     # (PAM/unix_chkpwd не может читать файл без неё) -- After=multi-user.
     # target специально, чтобы сработать ПОСЛЕДНИМ.
-    # CLAUDE_DEBUG 2026-09-05 (в35 -> в36): live-найдено -- "-f" гейт
+    # M52XQ_DEBUG 2026-09-05 (в35 -> в36): live-найдено -- "-f" гейт
     # здесь ВСЕГДА проваливался, потому что этот блок идёт РАНЬШЕ
     # `cp -a "$EXTRAS"/rootfs-files/. "$ROOTFS_MNT/"` (см. ниже по файлу),
     # то есть файла ещё физически нет на момент проверки. Тот же баг,
@@ -1171,7 +1171,7 @@ if mount -t ext4 -o rw /data/rootfs.img "$ROOTFS_MNT"; then
         # Пакеты больше не нужны внутри самого образа -- освобождаем ~110MB.
         rm -rf "$ROOTFS_MNT/usr/local/lib/halium-audio-fix-debs"
 
-        # CLAUDE_DEBUG 2026-09-05 (эксперимент в35, перенесено из в33/в34):
+        # M52XQ_DEBUG 2026-09-05 (эксперимент в35, перенесено из в33/в34):
         # flashlightd_...deb внутри halium-audio-fix-debs выше своим
         # postinst перезаписывает org.droidian.Flashlightd.service обратно
         # на штатный (нерабочий на этом порту) бинарник. Переинжектим

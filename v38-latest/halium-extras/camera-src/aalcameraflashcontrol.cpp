@@ -69,20 +69,20 @@ void AalCameraFlashControl::init(CameraControl *control)
     // synchronous binder calls into cameraserver with no prior timeout
     // guard and no logging, making them the leading suspect. Wrapped with
     // the same runHalCallWithTimeout() pattern used elsewhere tonight.
-    fprintf(stderr, "CLAUDE_DEBUG: AalCameraFlashControl::init() calling querySupportedFlashModes()\n");
+    fprintf(stderr, "M52XQ_DEBUG: AalCameraFlashControl::init() calling querySupportedFlashModes()\n");
     {
         CameraControl *c = control;
         AalCameraFlashControl *self = this;
         runHalCallWithTimeout([self, c]() { self->querySupportedFlashModes(c); },
                               3000, "android_camera_enumerate_supported_flash_modes()");
     }
-    fprintf(stderr, "CLAUDE_DEBUG: AalCameraFlashControl::init() querySupportedFlashModes() done\n");
+    fprintf(stderr, "M52XQ_DEBUG: AalCameraFlashControl::init() querySupportedFlashModes() done\n");
 
     FlashMode mode = qt2Android(m_currentMode);
-    fprintf(stderr, "CLAUDE_DEBUG: AalCameraFlashControl::init() calling android_camera_set_flash_mode()\n");
+    fprintf(stderr, "M52XQ_DEBUG: AalCameraFlashControl::init() calling android_camera_set_flash_mode()\n");
     runHalCallWithTimeout([control, mode]() { android_camera_set_flash_mode(control, mode); },
                           3000, "android_camera_set_flash_mode()");
-    fprintf(stderr, "CLAUDE_DEBUG: AalCameraFlashControl::init() android_camera_set_flash_mode() done\n");
+    fprintf(stderr, "M52XQ_DEBUG: AalCameraFlashControl::init() android_camera_set_flash_mode() done\n");
 
     Q_EMIT flashReady(true);
 }

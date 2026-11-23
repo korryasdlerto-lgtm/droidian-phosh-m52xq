@@ -37,7 +37,7 @@ public:
     void setSurface(QAbstractVideoSurface *surface);
 
     static void updateViewfinderFrameCB(void *context);
-    // CLAUDE_DEBUG 2026-09-05 (ФИКСЫ_ДЛЯ_В32.txt п.6.7): callback-режим
+    // M52XQ_DEBUG 2026-09-05 (ФИКСЫ_ДЛЯ_В32.txt п.6.7): callback-режим
     // Camera1 API -- HAL зовёт это с сырым NV21-буфером на КАЖДЫЙ кадр,
     // независимо от GL/текстурного пути (который так и не смог
     // отрендериться под software Qt Quick backend). Может звонить с
@@ -47,7 +47,7 @@ public:
     // текстурного пути.
     static void onPreviewFrameCB(void *data, uint32_t data_size, void *context);
 
-    // CLAUDE_DEBUG 2026-09-04: android_camera_start_preview() (реальный
+    // M52XQ_DEBUG 2026-09-04: android_camera_start_preview() (реальный
     // запуск потока с сенсора) на штатном пути вызывается ТОЛЬКО если
     // m_textureId уже ненулевой -- а его должен создать qtvideo-node
     // (ShaderVideoNodePlugin) через сигнал textureCreated, который на этом
@@ -91,7 +91,7 @@ private:
     GLuint m_textureId;
     QImage m_preview;
 
-    // CLAUDE_DEBUG: см. ensurePrivateGlContext() -- держим как члены, а не
+    // M52XQ_DEBUG: см. ensurePrivateGlContext() -- держим как члены, а не
     // статики, HAL требует вызова из того же потока, где создан контекст.
     bool m_privateGlReady;
     void *m_eglDpy;

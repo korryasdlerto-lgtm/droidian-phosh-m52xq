@@ -53,7 +53,7 @@ public Q_SLOTS:
     void startFocus();
 
 private Q_SLOTS:
-    // CLAUDE_DEBUG 2026-09-04: страховка на случай, если HAL стартует
+    // M52XQ_DEBUG 2026-09-04: страховка на случай, если HAL стартует
     // автофокус, но никогда не вызывает on_msg_focus_cb -- без этого
     // m_focusRunning остаётся true навсегда и блокирует capture() через
     // updateCaptureReady() ровно так же, как чёрный видоискатель.

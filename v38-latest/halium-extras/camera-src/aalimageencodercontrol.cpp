@@ -85,7 +85,7 @@ QStringList AalImageEncoderControl::supportedImageCodecs() const
 
 QList<QSize> AalImageEncoderControl::supportedResolutions(const QImageEncoderSettings &settings, bool *continuous) const
 {
-    // CLAUDE_DEBUG 2026-09-05: `continuous` был Q_UNUSED -- никогда не
+    // M52XQ_DEBUG 2026-09-05: `continuous` был Q_UNUSED -- никогда не
     // устанавливался, оставался мусором со стека вызывающей стороны.
     // QtMultimedia's Camera::firstFourThreeResolution (main.qml:228)
     // может опираться на этот флаг при выборе размера из списка --
@@ -122,7 +122,7 @@ QList<QSize> AalImageEncoderControl::supportedResolutions(const QImageEncoderSet
 
 QList<QSize> AalImageEncoderControl::supportedThumbnailResolutions(const QImageEncoderSettings &settings, bool *continuous) const
 {
-    // CLAUDE_DEBUG 2026-09-05: тот же фикс, что и в supportedResolutions()
+    // M52XQ_DEBUG 2026-09-05: тот же фикс, что и в supportedResolutions()
     // выше -- continuous не должен оставаться мусором со стека.
     if (continuous)
         *continuous = false;

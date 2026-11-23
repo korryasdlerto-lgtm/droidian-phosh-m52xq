@@ -105,18 +105,18 @@ void AudioCapture::run()
                 && bytesWritten == readSize
                 && !m_flagExit);
 
-    fprintf(stderr, "CLAUDE_DEBUG: AudioCapture::run() loop exited (bytesRead=%d bytesWritten=%d flagExit=%d)\n",
+    fprintf(stderr, "M52XQ_DEBUG: AudioCapture::run() loop exited (bytesRead=%d bytesWritten=%d flagExit=%d)\n",
             (int)bytesRead, (int)bytesWritten, (int)m_flagExit);
 
     // Make sure that Pulse stops reading the microphone when recording stops
     if (m_paStream != NULL)
     {
-        fprintf(stderr, "CLAUDE_DEBUG: AudioCapture::run() calling pa_simple_free()\n");
+        fprintf(stderr, "M52XQ_DEBUG: AudioCapture::run() calling pa_simple_free()\n");
         pa_simple_free(m_paStream);
         m_paStream = NULL;
-        fprintf(stderr, "CLAUDE_DEBUG: AudioCapture::run() pa_simple_free() returned\n");
+        fprintf(stderr, "M52XQ_DEBUG: AudioCapture::run() pa_simple_free() returned\n");
     }
-    fprintf(stderr, "CLAUDE_DEBUG: AudioCapture::run() returning\n");
+    fprintf(stderr, "M52XQ_DEBUG: AudioCapture::run() returning\n");
 }
 
 /*!

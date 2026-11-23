@@ -84,8 +84,6 @@ plugin for telephony) instead of a custom-built Halium image.
     and package overlay (`rootfs-files/`) applied on top of the base
     Droidian rootfs.
   - `v38-latest/META-INF/` — the TWRP-flashable ZIP installer scripts.
-  - `v38-latest/FIXES-*.md`, `ФИКСЫ_ДЛЯ_В36.txt` — this version's own
-    changelog/investigation notes.
 - **`kernel-config/lineage-m52xq_defconfig`** — the kernel `.config`
   currently in use, kept at the repo root since it applies across
   versions (see [Recurring themes](#recurring-themes) item 7 and the
@@ -101,10 +99,7 @@ plugin for telephony) instead of a custom-built Halium image.
 
 Each numbered version represents one real flash-and-test iteration on
 physical hardware. This section is the project's lab notebook,
-condensed from the original per-version `.md`/`.txt` files (`DROIDIAN-
-vN-PLAN.md`, `DROIDIAN-vN-SYSTEMD-FIX-HOWTO.md`, `FIXES-vN-*.md`,
-`ФИКСЫ_ДЛЯ_В36.txt` — only `v38`'s own copies are kept in full under
-`v38-latest/`, the rest exist only in this history section). Kept in
+condensed from the original per-version notes. Kept in
 full technical detail deliberately — exact paths, service names, error
 strings — since this is meant to be reference material for whoever
 debugs the next regression, not a marketing changelog.
@@ -732,8 +727,7 @@ about EGL.
 Dial pad stays greyed out — `org.ofono.Manager.GetModems` returns zero
 modems, unchanged since v11. Two real, confirmed bugs already found
 and fixed live on the device (only partially folded back into
-sources — see `v38-latest/DROIDIAN-V25-PLAN.md` for the precise,
-version-accurate state):
+sources):
 
 1. `ofonod-wrapper`'s plugin auto-selection shells out to a
    `device-info` binary that doesn't exist on this system, silently

@@ -37,7 +37,7 @@
 #include <cstring>
 #include <atomic>
 
-// CLAUDE_DEBUG 2026-09-05: диагностический счётчик реальных кадров от
+// M52XQ_DEBUG 2026-09-05: диагностический счётчик реальных кадров от
 // HAL, инкрементируется в onPreviewFrameCB() (поток колбэка -- НИКАКИХ
 // qWarning() там, см. ФИКСЫ_ДЛЯ_В32.txt п.6.7). Читается и печатается
 // только из updateViewfinderFrame() (GUI-поток), чтобы понять, реально
@@ -70,7 +70,7 @@ public:
         return QAbstractVideoBuffer::NoHandle;
     }
 
-    // CLAUDE_DEBUG 2026-09-05 (ФИКСЫ_ДЛЯ_В32.txt п.6.7): вызывается из
+    // M52XQ_DEBUG 2026-09-05 (ФИКСЫ_ДЛЯ_В32.txt п.6.7): вызывается из
     // onPreviewFrameCB() с сырым NV21-буфером HAL. Может звонить с ЛЮБОГО
     // потока -- реализация сама берёт лок. Дефолт-заглушка на случай
     // будущих мапперов, которые не читают NV21 напрямую.
@@ -110,7 +110,7 @@ public:
         return QAbstractVideoBuffer::NoHandle;
     }
 
-    // CLAUDE_DEBUG 2026-09-05: setSize() зовётся из GUI-потока
+    // M52XQ_DEBUG 2026-09-05: setSize() зовётся из GUI-потока
     // (updateViewfinderFrame()), а m_width/m_height читаются из потока
     // HAL внутри updateFromNV21() -- без общего лока это чистый data
     // race (могли увидеть несогласованный размер посреди записи, отсюда
@@ -122,7 +122,7 @@ public:
         AalTextureBufferMapper::setSize(size);
     }
 
-    // CLAUDE_DEBUG 2026-09-05 (ФИКСЫ_ДЛЯ_В32.txt п.6.7): ночной успешный
+    // M52XQ_DEBUG 2026-09-05 (ФИКСЫ_ДЛЯ_В32.txt п.6.7): ночной успешный
     // поток шёл именно через callback-режим Camera1 API (сырые NV21-кадры
     // через C-колбэк), а не через GL-текстуру -- этот код для GL-текстуры
     // так и не смог отрендериться под QT_QUICK_BACKEND=software. Здесь --
@@ -139,7 +139,7 @@ public:
             return;
         }
 
-        // CLAUDE_DEBUG 2026-09-05: НЕ логировать здесь (qWarning()) --
+        // M52XQ_DEBUG 2026-09-05: НЕ логировать здесь (qWarning()) --
         // эта функция зовётся из потока HAL-колбэка, см. ФИКСЫ_ДЛЯ_В32.txt
         // п.6.7 про "stack corruption" от qWarning() в этом контексте.
         const size_t expectedBytes = size_t(m_width) * size_t(m_height) * 3 / 2;
@@ -193,7 +193,7 @@ public:
             return nullptr;
         }
 
-        // CLAUDE_DEBUG 2026-09-05: раньше лок держался МЕЖДУ map() и
+        // M52XQ_DEBUG 2026-09-05: раньше лок держался МЕЖДУ map() и
         // unmap() -- если Qt хоть раз вызовет unmap() без парного map()
         // (m_mapper -- один переиспользуемый объект на ВСЕ кадры, а
         // QVideoFrame у Qt может жить дольше одного цикла), это unlock()
@@ -297,7 +297,7 @@ AalVideoRendererControl::AalVideoRendererControl(AalCameraService *service, QObj
       m_eglCtx(nullptr),
       m_eglSurf(nullptr)
 {
-    // CLAUDE_DEBUG 2026-09-05 (ФИКСЫ_ДЛЯ_В32.txt п.6.7): callback-режим
+    // M52XQ_DEBUG 2026-09-05 (ФИКСЫ_ДЛЯ_В32.txt п.6.7): callback-режим
     // Camera1 API -- см. AalCallbackFrameMapper выше. Заменяет прежние
     // GL-текстурные мапперы (EGLImage и glReadPixels-с-шейдером), которые
     // требовали живого QOpenGLContext на самой сцене Qt Quick -- а его на
@@ -334,7 +334,7 @@ void AalVideoRendererControl::init(CameraControl *control, CameraControlListener
 {
     Q_UNUSED(control);
     listener->on_preview_texture_needs_update_cb = &AalVideoRendererControl::updateViewfinderFrameCB;
-    // CLAUDE_DEBUG 2026-09-05 (ФИКСЫ_ДЛЯ_В32.txt п.6.7): реальная доставка
+    // M52XQ_DEBUG 2026-09-05 (ФИКСЫ_ДЛЯ_В32.txt п.6.7): реальная доставка
     // кадров теперь идёт через это -- сырой NV21 колбэком, а не через
     // текстуру (см. onPreviewFrameCB() и startPreview() ниже).
     listener->on_preview_frame_cb = &AalVideoRendererControl::onPreviewFrameCB;
@@ -342,7 +342,7 @@ void AalVideoRendererControl::init(CameraControl *control, CameraControlListener
     m_textureId = 0;
 }
 
-// CLAUDE_DEBUG 2026-09-04: см. .h -- создаёт СВОЙ приватный EGL-контекст
+// M52XQ_DEBUG 2026-09-04: см. .h -- создаёт СВОЙ приватный EGL-контекст
 // и текстуру, полностью в обход Qt Quick (которое не может получить
 // EGLConfig на этом устройстве). Проверено отдельным тест-стендом
 // (egl-probe.c): сырой EGL на этом устройстве полностью рабочий.
@@ -360,13 +360,13 @@ bool AalVideoRendererControl::ensurePrivateGlContext()
 
     EGLDisplay dpy = eglGetDisplay(wlDisplay ? (EGLNativeDisplayType)wlDisplay : EGL_DEFAULT_DISPLAY);
     if (dpy == EGL_NO_DISPLAY) {
-        qWarning() << "CLAUDE_DEBUG: ensurePrivateGlContext() eglGetDisplay failed";
+        qWarning() << "M52XQ_DEBUG: ensurePrivateGlContext() eglGetDisplay failed";
         return false;
     }
 
     EGLint major, minor;
     if (!eglInitialize(dpy, &major, &minor)) {
-        qWarning() << "CLAUDE_DEBUG: ensurePrivateGlContext() eglInitialize failed, err=" << eglGetError();
+        qWarning() << "M52XQ_DEBUG: ensurePrivateGlContext() eglInitialize failed, err=" << eglGetError();
         return false;
     }
 
@@ -379,27 +379,27 @@ bool AalVideoRendererControl::ensurePrivateGlContext()
     EGLConfig config;
     EGLint numConfigs = 0;
     if (!eglChooseConfig(dpy, configAttribs, &config, 1, &numConfigs) || numConfigs < 1) {
-        qWarning() << "CLAUDE_DEBUG: ensurePrivateGlContext() eglChooseConfig failed, err=" << eglGetError();
+        qWarning() << "M52XQ_DEBUG: ensurePrivateGlContext() eglChooseConfig failed, err=" << eglGetError();
         return false;
     }
 
     EGLint ctxAttribs[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE };
     EGLContext ctx = eglCreateContext(dpy, config, EGL_NO_CONTEXT, ctxAttribs);
     if (ctx == EGL_NO_CONTEXT) {
-        qWarning() << "CLAUDE_DEBUG: ensurePrivateGlContext() eglCreateContext failed, err=" << eglGetError();
+        qWarning() << "M52XQ_DEBUG: ensurePrivateGlContext() eglCreateContext failed, err=" << eglGetError();
         return false;
     }
 
     EGLint pbufAttribs[] = { EGL_WIDTH, 1, EGL_HEIGHT, 1, EGL_NONE };
     EGLSurface surf = eglCreatePbufferSurface(dpy, config, pbufAttribs);
     if (surf == EGL_NO_SURFACE) {
-        qWarning() << "CLAUDE_DEBUG: ensurePrivateGlContext() eglCreatePbufferSurface failed, err=" << eglGetError();
+        qWarning() << "M52XQ_DEBUG: ensurePrivateGlContext() eglCreatePbufferSurface failed, err=" << eglGetError();
         eglDestroyContext(dpy, ctx);
         return false;
     }
 
     if (!eglMakeCurrent(dpy, surf, surf, ctx)) {
-        qWarning() << "CLAUDE_DEBUG: ensurePrivateGlContext() eglMakeCurrent failed, err=" << eglGetError();
+        qWarning() << "M52XQ_DEBUG: ensurePrivateGlContext() eglMakeCurrent failed, err=" << eglGetError();
         eglDestroySurface(dpy, surf);
         eglDestroyContext(dpy, ctx);
         return false;
@@ -408,13 +408,13 @@ bool AalVideoRendererControl::ensurePrivateGlContext()
     typedef void (*glGenTextures_fn)(GLsizei, GLuint*);
     glGenTextures_fn realGlGenTextures = (glGenTextures_fn)eglGetProcAddress("glGenTextures");
     if (!realGlGenTextures) {
-        qWarning() << "CLAUDE_DEBUG: ensurePrivateGlContext() eglGetProcAddress(glGenTextures) failed";
+        qWarning() << "M52XQ_DEBUG: ensurePrivateGlContext() eglGetProcAddress(glGenTextures) failed";
         return false;
     }
     GLuint tex = 0;
     realGlGenTextures(1, &tex);
     if (!tex) {
-        qWarning() << "CLAUDE_DEBUG: ensurePrivateGlContext() glGenTextures returned 0";
+        qWarning() << "M52XQ_DEBUG: ensurePrivateGlContext() glGenTextures returned 0";
         return false;
     }
 
@@ -424,7 +424,7 @@ bool AalVideoRendererControl::ensurePrivateGlContext()
     m_textureId = tex;
     m_privateGlReady = true;
 
-    qWarning() << "CLAUDE_DEBUG: ensurePrivateGlContext() OK, texture id=" << m_textureId;
+    qWarning() << "M52XQ_DEBUG: ensurePrivateGlContext() OK, texture id=" << m_textureId;
     return true;
 }
 
@@ -439,7 +439,7 @@ void AalVideoRendererControl::startPreview()
     }
     m_previewStarted = true;
 
-    // CLAUDE_DEBUG 2026-09-04: на штатном пути m_textureId остаётся 0,
+    // M52XQ_DEBUG 2026-09-04: на штатном пути m_textureId остаётся 0,
     // потому что Qt Quick не может создать текстуру на этом устройстве
     // (см. .h) -- без этого android_camera_start_preview() не вызывался
     // бы вообще. Даём HAL свой приватный текстуру заранее.
@@ -449,7 +449,7 @@ void AalVideoRendererControl::startPreview()
 
     if (m_textureId) {
         CameraControl *cc = m_service->androidControl();
-        // CLAUDE_DEBUG 2026-09-05 (ФИКСЫ_ДЛЯ_В32.txt п.6.7): текстура
+        // M52XQ_DEBUG 2026-09-05 (ФИКСЫ_ДЛЯ_В32.txt п.6.7): текстура
         // по-прежнему нужна ТОЛЬКО чтобы HAL считал preview window
         // валидным (haveValidPreviewWindow() в Camera2Client.cpp иначе
         // вообще не начинает стримить, даже в CPU-режиме кадров) -- сами
@@ -459,9 +459,9 @@ void AalVideoRendererControl::startPreview()
         android_camera_set_preview_texture(cc, m_textureId);
         android_camera_set_preview_callback_mode(cc, PREVIEW_CALLBACK_ENABLED);
         android_camera_start_preview(cc);
-        qWarning() << "CLAUDE_DEBUG: startPreview() called android_camera_start_preview() (callback mode), textureId=" << m_textureId;
+        qWarning() << "M52XQ_DEBUG: startPreview() called android_camera_start_preview() (callback mode), textureId=" << m_textureId;
     } else {
-        qWarning() << "CLAUDE_DEBUG: startPreview() NO texture, HAL preview NOT started";
+        qWarning() << "M52XQ_DEBUG: startPreview() NO texture, HAL preview NOT started";
     }
 
     // if no texture ID is set to the frame passed to ShaderVideoNode,
@@ -510,7 +510,7 @@ void AalVideoRendererControl::updateViewfinderFrame()
     static int s_callCount = 0;
     ++s_callCount;
     if (s_callCount <= 5 || s_callCount % 30 == 0) {
-        qWarning() << "CLAUDE_DEBUG: updateViewfinderFrame() called #" << s_callCount
+        qWarning() << "M52XQ_DEBUG: updateViewfinderFrame() called #" << s_callCount
                    << "realHalFrames=" << g_previewFrameCount.load(std::memory_order_relaxed);
     }
 
@@ -555,12 +555,12 @@ void AalVideoRendererControl::updateViewfinderFrame()
 
 void AalVideoRendererControl::onTextureCreated(GLuint textureID)
 {
-    // CLAUDE_DEBUG 2026-09-04: если у нас уже есть рабочая приватная
+    // M52XQ_DEBUG 2026-09-04: если у нас уже есть рабочая приватная
     // текстура и HAL-поток уже реально запущен через неё -- не даём
     // Qt Quick затереть её невалидным/нулевым значением (это ровно
     // симптом "Unable to get texture ID" на этом устройстве).
     if (m_privateGlReady && m_textureId && !textureID) {
-        qWarning() << "CLAUDE_DEBUG: onTextureCreated(0) ignored, keeping private texture id=" << m_textureId;
+        qWarning() << "M52XQ_DEBUG: onTextureCreated(0) ignored, keeping private texture id=" << m_textureId;
         return;
     }
 
@@ -593,7 +593,7 @@ void AalVideoRendererControl::updateViewfinderFrameCB(void* context)
 void AalVideoRendererControl::onPreviewFrameCB(void* data, uint32_t data_size, void* context)
 {
     Q_UNUSED(context);
-    // CLAUDE_DEBUG 2026-09-05 (ФИКСЫ_ДЛЯ_В32.txt п.6.7): звонит HAL,
+    // M52XQ_DEBUG 2026-09-05 (ФИКСЫ_ДЛЯ_В32.txt п.6.7): звонит HAL,
     // возможно с ЛЮБОГО потока (см. .h) -- сюда попадает реальный сырой
     // NV21-кадр. Сама конвертация NV21->RGB32 безопасна с любого потока
     // (локер внутри updateFromNV21()), но показ кадра (m_surface->present())
@@ -604,7 +604,7 @@ void AalVideoRendererControl::onPreviewFrameCB(void* data, uint32_t data_size, v
         return;
     }
 
-    // CLAUDE_DEBUG 2026-09-05 (ФИКСЫ_ДЛЯ_В32.txt п.6.7, найдено decisive-
+    // M52XQ_DEBUG 2026-09-05 (ФИКСЫ_ДЛЯ_В32.txt п.6.7, найдено decisive-
     // тестом): "stack corruption detected (-fstack-protector)" на первом
     // же реальном кадре случался ДАЖЕ с пустым телом колбэка -- виноват
     // оказался сам qWarning() внутри onPreviewFrameCB(): HAL зовёт этот

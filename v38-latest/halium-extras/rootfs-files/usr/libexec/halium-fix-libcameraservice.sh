@@ -1,5 +1,5 @@
 #!/bin/sh
-# CLAUDE_DEBUG 2026-09-05 (в37): пропатченная libcameraservice.so
+# M52XQ_DEBUG 2026-09-05 (в37): пропатченная libcameraservice.so
 # (исключение для hybris-клиента в handleAppOpMode -- без неё AppOps
 # отзывает доступ к камере сразу после первого кадра, см. ФИКСЫ_ДЛЯ_
 # В32.txt п.6.7) была застейджена как bind-mount через ${R} в
@@ -18,7 +18,7 @@
 # хостовый шелл открывает файл, lxc-attach просто наследует готовый fd
 # на stdin.
 #
-# CLAUDE_DEBUG 2026-09-06 (в38): раньше запускался при старте phosh
+# M52XQ_DEBUG 2026-09-06 (в38): раньше запускался при старте phosh
 # (After=phosh.service) с собственным wait-циклом, чтобы не добавлять
 # лишний binder/файловый трафик в окно гонки phoc/surfaceflinger за
 # композитор. Теперь триггерится on-demand из halium-camera-ondemand-

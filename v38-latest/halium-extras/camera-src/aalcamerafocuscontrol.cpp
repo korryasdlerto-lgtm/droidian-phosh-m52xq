@@ -43,7 +43,7 @@ AalCameraFocusControl::AalCameraFocusControl(AalCameraService *service, QObject 
     m_focusRegion.bottom = 0.0;
     m_focusRegion.weight = -9.9;
 
-    // CLAUDE_DEBUG 2026-09-04: см. .h -- страховка от зависшего on_msg_focus_cb
+    // M52XQ_DEBUG 2026-09-04: см. .h -- страховка от зависшего on_msg_focus_cb
     m_focusWatchdog = new QTimer(this);
     m_focusWatchdog->setSingleShot(true);
     m_focusWatchdog->setInterval(2000);
@@ -53,7 +53,7 @@ AalCameraFocusControl::AalCameraFocusControl(AalCameraService *service, QObject 
 void AalCameraFocusControl::onFocusWatchdogTimeout()
 {
     if (m_focusRunning) {
-        qWarning() << "CLAUDE_DEBUG: focus watchdog fired -- HAL never called on_msg_focus_cb, forcing focusRunning=false";
+        qWarning() << "M52XQ_DEBUG: focus watchdog fired -- HAL never called on_msg_focus_cb, forcing focusRunning=false";
         m_focusRunning = false;
         m_service->updateCaptureReady();
     }

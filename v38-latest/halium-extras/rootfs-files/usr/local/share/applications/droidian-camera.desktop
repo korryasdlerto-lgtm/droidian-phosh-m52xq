@@ -11,7 +11,7 @@
 # returning null config" / "qt.qpa.wayland: Could not create EGL
 # surface (EGL error 0x3005)" hundreds of times per second.
 #
-# CLAUDE_DEBUG 2026-09-05 (в36): Exec= перенаправлен через
+# M52XQ_DEBUG 2026-09-05 (в36): Exec= перенаправлен через
 # halium-camera-launch.sh -- при каждом открытии приложения он
 # триггерит on-demand рестарт camera-provider + свежую пару
 # minimediaservice (см. halium-camera-ondemand-refresh.service/.path),

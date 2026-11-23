@@ -208,7 +208,7 @@ QSize AalViewfinderSettingsControl::chooseOptimalSize(const QList<QSize> &sizes)
 {
     if (!sizes.empty()) {
         if (m_aspectRatio == 0) {
-            // CLAUDE_DEBUG 2026-09-04 (ФИКСЫ_ДЛЯ_В32 п.1, "остаётся
+            // M52XQ_DEBUG 2026-09-04 (ФИКСЫ_ДЛЯ_В32 п.1, "остаётся
             // нерешённым" (а)): раньше тут безусловно бралось sizes[1] --
             // на этом HAL список превью-размеров близок к разрешению
             // самого сенсора, и вторым по счёту оказался кадр 3280x2464

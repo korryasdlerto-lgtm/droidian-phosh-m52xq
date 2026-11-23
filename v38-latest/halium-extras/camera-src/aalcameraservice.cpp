@@ -165,12 +165,12 @@ bool AalCameraService::connectCamera()
     m_androidControl = android_camera_connect_by_id(m_deviceSelectControl->selectedDevice(), m_androidListener);
 
     if (!m_androidControl) {
-        qWarning() << "CLAUDE_DEBUG: android_camera_connect_by_id() FAILED for device" << m_deviceSelectControl->selectedDevice();
+        qWarning() << "M52XQ_DEBUG: android_camera_connect_by_id() FAILED for device" << m_deviceSelectControl->selectedDevice();
         delete m_androidListener;
         m_androidListener = 0;
         return false;
     }
-    qWarning() << "CLAUDE_DEBUG: android_camera_connect_by_id() OK, control=" << m_androidControl;
+    qWarning() << "M52XQ_DEBUG: android_camera_connect_by_id() OK, control=" << m_androidControl;
 
     m_androidListener->context = m_androidControl;
     initControls(m_androidControl, m_androidListener);
@@ -294,7 +294,7 @@ void AalCameraService::updateCaptureReady()
     bool focusBusy = m_focusControl->isFocusBusy();
     bool previewStarted = isPreviewStarted();
 
-    qWarning() << "CLAUDE_DEBUG: updateCaptureReady() stateActive=" << stateActive
+    qWarning() << "M52XQ_DEBUG: updateCaptureReady() stateActive=" << stateActive
                << "captureRunning=" << captureRunning
                << "focusBusy=" << focusBusy
                << "previewStarted=" << previewStarted;
@@ -308,7 +308,7 @@ void AalCameraService::updateCaptureReady()
     if (!previewStarted)
         ready = false;
 
-    qWarning() << "CLAUDE_DEBUG: updateCaptureReady() final ready=" << ready;
+    qWarning() << "M52XQ_DEBUG: updateCaptureReady() final ready=" << ready;
 
     m_imageCaptureControl->setReady(ready);
 }

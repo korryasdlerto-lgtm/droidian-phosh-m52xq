@@ -1,6 +1,6 @@
 [Unit]
 Description=Ensure /etc/shadow is group=shadow so PAM's unix_chkpwd can read it (see FIXES-V33/V34)
-# CLAUDE_DEBUG 2026-09-05: halium-restore-state.sh already does this same
+# M52XQ_DEBUG 2026-09-05: halium-restore-state.sh already does this same
 # chgrp, but it runs very early (After=local-fs.target, Before=
 # NetworkManager/bluetooth) -- live-observed on a real clean flash+wipe
 # that /etc/shadow ends up group=root anyway despite that script
